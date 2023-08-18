@@ -1,6 +1,6 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.6/firebase-app.js'
-import {  } from 'https://www.gstatic.com/firebasejs/9.6.6/firebase-firestore.js'
-import { getAuth, GoogleAuthProvider, signInWithPopup } from 'https://www.gstatic.com/firebasejs/9.6.6/firebase-auth.js'
+import { getFirestore } from 'https://www.gstatic.com/firebasejs/9.6.6/firebase-firestore.js'
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/9.6.6/firebase-auth.js'
 
 const firebaseConfig = {
     apiKey: 'AIzaSyCr2-mujMv4U-qe4dzHteeChECdlRyDui0',
@@ -15,13 +15,29 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig)
 const auth = getAuth(app)
 const provider = new GoogleAuthProvider()
+const db = getFirestore(app)
  
 const phrasesContainer = document.querySelector('[data-js="phrases-container"]')
 const buttonGoogle = document.querySelector('[data-js="button-google"]')
+const linkLogout = document.querySelector('[data-js="logout"]')
 
-const user = null
+const showAppropriatedNavLinks = user => {
+    console.log(user)
+    const loginMessageExists = document.querySelector('[data-js="login-message"]')
 
-const showAppropriatedNavLinks = () => {
+    if (loginMessageExists) {
+        loginMessageExists.remove()
+    }
+
+    if (!user) {
+        const loginMessage = document.createElement('h5')
+
+        loginMessage.textContent = 'Faça login para ver as frases'
+        loginMessage.classList.add('center-align', 'white-text')
+        loginMessage.setAttribute('data-js', 'login-message')
+        phrasesContainer.append(loginMessage)
+    }
+
     const lis = [...document.querySelector('[data-js="nav-ul"]').children]
     
     lis.forEach(li => {
@@ -34,14 +50,6 @@ const showAppropriatedNavLinks = () => {
 
         li.classList.add('hide')
     })
-
-    if (!user) {
-        const loginMessage = document.createElement('h5')
-
-        loginMessage.textContent = 'Faça login para ver as frases'
-        loginMessage.classList.add('center-align', 'white-text')
-        phrasesContainer.append(loginMessage)
-    }
 }
 
 const initModals = () => {
@@ -51,15 +59,26 @@ const initModals = () => {
 
 const login = async () => {
     try {
-        const result = await signInWithPopup(auth, provider)
-        console.log(result)
+        await signInWithPopup(auth, provider)
+        
+        const modalLogin = document.querySelector('[data-modal="login"]')
+        M.Modal.getInstance(modalLogin).close()
     } catch (error) {
         console.log('error:', error)
     }
  }
 
-buttonGoogle.addEventListener('click', login) 
+ const logout = async () => {
+    try {
+        await signOut(auth)
+        console.log('usuário deslogado')
+    } catch (error) {
+        console.log('error:', error)
+    }
+ }
 
-showAppropriatedNavLinks()
+onAuthStateChanged(auth, showAppropriatedNavLinks)
+buttonGoogle.addEventListener('click', login) 
+linkLogout.addEventListener('click', logout)
 
 initModals()
