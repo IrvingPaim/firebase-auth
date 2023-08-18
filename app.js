@@ -17,27 +17,15 @@ const auth = getAuth(app)
 const provider = new GoogleAuthProvider()
 const db = getFirestore(app)
  
-const phrasesContainer = document.querySelector('[data-js="phrases-container"]')
 const buttonGoogle = document.querySelector('[data-js="button-google"]')
 const linkLogout = document.querySelector('[data-js="logout"]')
 
-const showAppropriatedNavLinks = user => {
-    console.log(user)
-    const loginMessageExists = document.querySelector('[data-js="login-message"]')
+const addPhrase = e => {
+    e.preventDefault()
+    console.log('callback do envio do form executado')
+}
 
-    if (loginMessageExists) {
-        loginMessageExists.remove()
-    }
-
-    if (!user) {
-        const loginMessage = document.createElement('h5')
-
-        loginMessage.textContent = 'Faça login para ver as frases'
-        loginMessage.classList.add('center-align', 'white-text')
-        loginMessage.setAttribute('data-js', 'login-message')
-        phrasesContainer.append(loginMessage)
-    }
-
+const handleAuthStateChanged = user => {
     const lis = [...document.querySelector('[data-js="nav-ul"]').children]
     
     lis.forEach(li => {
@@ -50,6 +38,27 @@ const showAppropriatedNavLinks = user => {
 
         li.classList.add('hide')
     })
+
+    console.log(user)
+    const loginMessageExists = document.querySelector('[data-js="login-message"]')
+    loginMessageExists?.remove()
+
+    const formAddPhrase = document.querySelector('[data-js="add-phrase-form"]')
+
+    if (!user) {
+        const phrasesContainer = document.querySelector('[data-js="phrases-container"]')
+        const loginMessage = document.createElement('h5')
+
+        loginMessage.textContent = 'Faça login para ver as frases'
+        loginMessage.classList.add('center-align', 'white-text')
+        loginMessage.setAttribute('data-js', 'login-message')
+        phrasesContainer.append(loginMessage)
+
+        formAddPhrase.removeEventListener('submit', addPhrase)
+        return
+    }
+
+    formAddPhrase.addEventListener('submit', addPhrase)
 }
 
 const initModals = () => {
@@ -77,7 +86,7 @@ const login = async () => {
     }
  }
 
-onAuthStateChanged(auth, showAppropriatedNavLinks)
+onAuthStateChanged(auth, handleAuthStateChanged)
 buttonGoogle.addEventListener('click', login) 
 linkLogout.addEventListener('click', logout)
 
