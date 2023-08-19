@@ -1,5 +1,5 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.6/firebase-app.js'
-import { getFirestore, collection, addDoc } from 'https://www.gstatic.com/firebasejs/9.6.6/firebase-firestore.js'
+import { getFirestore, collection, addDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/9.6.6/firebase-firestore.js'
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/9.6.6/firebase-auth.js'
 
 const firebaseConfig = {
@@ -20,6 +20,7 @@ const collectionPhrases = collection(db, 'phrases')
  
 const buttonGoogle = document.querySelector('[data-js="button-google"]')
 const linkLogout = document.querySelector('[data-js="logout"]')
+const phrasesList = document.querySelector('[data-js="phrases-list"]')
 
 const addPhrase = async e => {
     e.preventDefault()
@@ -39,15 +40,6 @@ const addPhrase = async e => {
     } catch (error) {
         console.log('problema na edição do document:', error)
     }
-
-    /*
-    - obter valores dos inputs
-    - sanitizar valores
-    - criar banco no firestore
-    - adicionar frases no banco
-    - limpar inputs
-    - fechar modal
-    */
 }
 
 const handleAuthStateChanged = user => {
@@ -84,6 +76,26 @@ const handleAuthStateChanged = user => {
     }
 
     formAddPhrase.addEventListener('submit', addPhrase)
+    onSnapshot(collectionPhrases, snapshot => {
+        const documentFragment = document.createDocumentFragment()
+
+        snapshot.docChanges().forEach(docChange => {
+            const liPhrase = document.createElement('li')
+            const movieTitleContainer = document.createElement('div')
+            const phraseContainer = document.createElement('div')
+            const { movieTitle, phrase } = docChange.doc.data()
+
+            movieTitleContainer.textContent = DOMPurify.sanitize(movieTitle)
+            phraseContainer.textContent = DOMPurify.sanitize(phrase)
+            movieTitleContainer.setAttribute('class', 'collapsible-header blue-grey-text text-lighten-5 blue-grey darken-4')
+            phraseContainer.setAttribute('class', 'collapsible-body blue-grey-text text-lighten-5 blue-grey darken-4')
+
+            liPhrase.append(movieTitleContainer, phraseContainer)
+            documentFragment.append(liPhrase)
+        })
+
+        phrasesList.append(documentFragment) 
+    })
 }
 
 const initModals = () => {
