@@ -20,7 +20,6 @@ const collectionPhrases = collection(db, 'phrases')
  
 const buttonGoogle = document.querySelector('[data-js="button-google"]')
 const linkLogout = document.querySelector('[data-js="logout"]')
-const phrasesList = document.querySelector('[data-js="phrases-list"]')
 
 const addPhrase = async e => {
     e.preventDefault()
@@ -42,6 +41,8 @@ const addPhrase = async e => {
     }
 }
 
+const initCollapsibles = collapsibles => M.Collapsible.init(collapsibles)
+
 const handleAuthStateChanged = user => {
     const lis = [...document.querySelector('[data-js="nav-ul"]').children]
     
@@ -61,6 +62,7 @@ const handleAuthStateChanged = user => {
     loginMessageExists?.remove()
 
     const formAddPhrase = document.querySelector('[data-js="add-phrase-form"]')
+    const phrasesList = document.querySelector('[data-js="phrases-list"]')
 
     if (!user) {
         const phrasesContainer = document.querySelector('[data-js="phrases-container"]')
@@ -72,6 +74,7 @@ const handleAuthStateChanged = user => {
         phrasesContainer.append(loginMessage)
 
         formAddPhrase.removeEventListener('submit', addPhrase)
+        phrasesList.innerHTML = ''
         return
     }
 
@@ -96,6 +99,7 @@ const handleAuthStateChanged = user => {
 
         phrasesList.append(documentFragment) 
     })
+    initCollapsibles(phrasesList)
 }
 
 const initModals = () => {
