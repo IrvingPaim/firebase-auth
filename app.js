@@ -18,9 +18,6 @@ const provider = new GoogleAuthProvider()
 const db = getFirestore(app)
 const collectionPhrases = collection(db, 'phrases')
  
-const buttonGoogle = document.querySelector('[data-js="button-google"]')
-const linkLogout = document.querySelector('[data-js="logout"]')
-
 const addPhrase = async e => {
     e.preventDefault()
 
@@ -63,6 +60,8 @@ const handleAuthStateChanged = user => {
 
     const formAddPhrase = document.querySelector('[data-js="add-phrase-form"]')
     const phrasesList = document.querySelector('[data-js="phrases-list"]')
+    const buttonGoogle = document.querySelector('[data-js="button-google"]')
+    const linkLogout = document.querySelector('[data-js="logout"]')
 
     if (!user) {
         const phrasesContainer = document.querySelector('[data-js="phrases-container"]')
@@ -74,11 +73,15 @@ const handleAuthStateChanged = user => {
         phrasesContainer.append(loginMessage)
 
         formAddPhrase.removeEventListener('submit', addPhrase)
+        buttonGoogle.addEventListener('click', login)
+        linkLogout.removeEventListener('click', logout)
         phrasesList.innerHTML = ''
         return
     }
 
     formAddPhrase.addEventListener('submit', addPhrase)
+    buttonGoogle.removeEventListener('click', login)
+    linkLogout.addEventListener('click', logout)
     onSnapshot(collectionPhrases, snapshot => {
         const documentFragment = document.createDocumentFragment()
 
@@ -114,7 +117,7 @@ const login = async () => {
         const modalLogin = document.querySelector('[data-modal="login"]')
         M.Modal.getInstance(modalLogin).close()
     } catch (error) {
-        console.log('error:', error)
+        console.log('login error:', error)
     }
  }
 
@@ -123,12 +126,10 @@ const login = async () => {
         await signOut(auth)
         console.log('usuário deslogado')
     } catch (error) {
-        console.log('error:', error)
+        console.log('logout error:', error)
     }
  }
 
 onAuthStateChanged(auth, handleAuthStateChanged)
-buttonGoogle.addEventListener('click', login) 
-linkLogout.addEventListener('click', logout)
-
+ 
 initModals()
