@@ -40,6 +40,27 @@ const addPhrase = async e => {
 
 const initCollapsibles = collapsibles => M.Collapsible.init(collapsibles)
 
+const login = async () => {
+    try {
+        await signInWithPopup(auth, provider)
+        
+        const modalLogin = document.querySelector('[data-modal="login"]')
+        M.Modal.getInstance(modalLogin).close()
+    } catch (error) {
+        console.log('login error:', error)
+    }
+ }
+
+ const logout = async unsubscribe => {
+    try {
+        await signOut(auth)
+        unsubscribe()
+        console.log('usuário deslogado')
+    } catch (error) {
+        console.log('logout error:', error)
+    }
+ }
+
 const handleAuthStateChanged = user => {
     const lis = [...document.querySelector('[data-js="nav-ul"]').children]
     
@@ -54,7 +75,6 @@ const handleAuthStateChanged = user => {
         li.classList.add('hide')
     })
 
-    console.log(user)
     const loginMessageExists = document.querySelector('[data-js="login-message"]')
     loginMessageExists?.remove()
 
@@ -62,6 +82,8 @@ const handleAuthStateChanged = user => {
     const phrasesList = document.querySelector('[data-js="phrases-list"]')
     const buttonGoogle = document.querySelector('[data-js="button-google"]')
     const linkLogout = document.querySelector('[data-js="logout"]')
+    const accountDetailsContainer = document.querySelector('[data-js="account-details"]')
+    const accountDetails = document.createElement('p')
 
     if (!user) {
         const phrasesContainer = document.querySelector('[data-js="phrases-container"]')
@@ -74,15 +96,15 @@ const handleAuthStateChanged = user => {
 
         formAddPhrase.removeEventListener('submit', addPhrase)
         buttonGoogle.addEventListener('click', login)
-        linkLogout.removeEventListener('click', logout)
+        linkLogout.onclick = null
         phrasesList.innerHTML = ''
+        accountDetailsContainer.innerHTML = ''
         return
     }
 
     formAddPhrase.addEventListener('submit', addPhrase)
     buttonGoogle.removeEventListener('click', login)
-    linkLogout.addEventListener('click', logout)
-    onSnapshot(collectionPhrases, snapshot => {
+    const unsubscribe = onSnapshot(collectionPhrases, snapshot => {
         const documentFragment = document.createDocumentFragment()
 
         snapshot.docChanges().forEach(docChange => {
@@ -102,33 +124,16 @@ const handleAuthStateChanged = user => {
 
         phrasesList.append(documentFragment) 
     })
+    linkLogout.onclick = () => logout(unsubscribe)
     initCollapsibles(phrasesList)
+    accountDetails.textContent = DOMPurify.sanitize(`${user.displayName} | ${user.email}`)
+    accountDetailsContainer.append(accountDetails)
 }
 
 const initModals = () => {
     const modals = document.querySelectorAll('[data-js="modal"]')
     M.Modal.init(modals)
 }
-
-const login = async () => {
-    try {
-        await signInWithPopup(auth, provider)
-        
-        const modalLogin = document.querySelector('[data-modal="login"]')
-        M.Modal.getInstance(modalLogin).close()
-    } catch (error) {
-        console.log('login error:', error)
-    }
- }
-
- const logout = async () => {
-    try {
-        await signOut(auth)
-        console.log('usuário deslogado')
-    } catch (error) {
-        console.log('logout error:', error)
-    }
- }
 
 onAuthStateChanged(auth, handleAuthStateChanged)
  
