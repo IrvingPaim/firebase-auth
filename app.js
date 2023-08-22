@@ -1,6 +1,6 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.6/firebase-app.js'
 import { getFirestore, collection, addDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/9.6.6/firebase-firestore.js'
-import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/9.6.6/firebase-auth.js'
+import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult,  onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/9.6.6/firebase-auth.js'
 
 const firebaseConfig = {
     apiKey: 'AIzaSyCr2-mujMv4U-qe4dzHteeChECdlRyDui0',
@@ -14,7 +14,6 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig)
 const auth = getAuth(app)
-const provider = new GoogleAuthProvider()
 const db = getFirestore(app)
 const collectionPhrases = collection(db, 'phrases')
  
@@ -42,10 +41,8 @@ const initCollapsibles = collapsibles => M.Collapsible.init(collapsibles)
 
 const login = async () => {
     try {
-        await signInWithPopup(auth, provider)
-        
-        const modalLogin = document.querySelector('[data-modal="login"]')
-        M.Modal.getInstance(modalLogin).close()
+        const provider = new GoogleAuthProvider()
+        await signInWithRedirect(auth, provider)
     } catch (error) {
         console.log('login error:', error)
     }
@@ -61,7 +58,14 @@ const login = async () => {
     }
  }
 
-const handleAuthStateChanged = user => {
+const handleAuthStateChanged = async user => {
+    try {
+        const result = await getRedirectResult(auth)
+        console.log('result:', result)
+    } catch (error) {
+        console.log('erro em getRedirectResult:', error)
+    }
+
     const lis = [...document.querySelector('[data-js="nav-ul"]').children]
     
     lis.forEach(li => {
