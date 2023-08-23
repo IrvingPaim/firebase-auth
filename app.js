@@ -2,6 +2,13 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.6/firebase
 import { getFirestore, collection, doc, getDoc, setDoc, query, where, addDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/9.6.6/firebase-firestore.js'
 import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/9.6.6/firebase-auth.js'
 
+const formAddPhrase = document.querySelector('[data-js="add-phrase-form"]')
+const phrasesList = document.querySelector('[data-js="phrases-list"]')
+const buttonGoogle = document.querySelector('[data-js="button-google"]')
+const linkLogout = document.querySelector('[data-js="logout"]')
+const accountDetailsContainer = document.querySelector('[data-js="account-details"]')
+const accountDetails = document.createElement('p')
+
 const firebaseConfig = {
     apiKey: 'AIzaSyCr2-mujMv4U-qe4dzHteeChECdlRyDui0',
     authDomain: 'fir-authentication-461b5.firebaseapp.com',
@@ -16,59 +23,70 @@ const app = initializeApp(firebaseConfig)
 const auth = getAuth(app)
 const db = getFirestore(app)
 const collectionPhrases = collection(db, 'phrases')
+
+const closeModalAddPhrase = () => {
+    const modalAddPhrase = document.querySelector('[data-modal="add-phrase"]')
+    M.Modal.getInstance(modalAddPhrase).close()
+}
+
+const to = promise => promise
+    .then(result => [null, result])
+    .catch(error => [error])
  
 const addPhrase = async (e, user) => {
     e.preventDefault()
 
-    try {
-        await addDoc(collectionPhrases, {
-            movieTitle: DOMPurify.sanitize(e.target.title.value),
-            phrase: DOMPurify.sanitize(e.target.phrase.value),
-            userId: DOMPurify.sanitize(user.uid)
-        })
+    const [error] = await to(addDoc(collectionPhrases, {
+        movieTitle: DOMPurify.sanitize(e.target.title.value),
+        phrase: DOMPurify.sanitize(e.target.phrase.value),
+        userId: user.uid
+    }))
 
-        e.target.reset()
-
-        const modalAddPhrase = document.querySelector('[data-modal="add-phrase"]')
-        M.Modal.getInstance(modalAddPhrase).close()
-    } catch (error) {
-        console.log('problema na edição do document:', error)
+    if (error) {
+        alert('Não foi possível adicionar a frase')
+        return
     }
+
+    e.target.reset() 
+    closeModalAddPhrase()
 }
 
 const initCollapsibles = collapsibles => M.Collapsible.init(collapsibles)
 
 const login = async () => {
-    try {
-        const provider = new GoogleAuthProvider()
-        await signInWithRedirect(auth, provider)
-    } catch (error) {
-        console.log('login error:', error)
+    const provider = new GoogleAuthProvider()
+    const [error] = await to(signInWithRedirect(auth, provider))
+
+    if (error) {
+        alert('Houve um problema ao fazer login')
     }
  }
 
  const logout = async unsubscribe => {
-    try {
-        await signOut(auth)
-        unsubscribe()
-        console.log('usuário deslogado')
-    } catch (error) {
-        console.log('logout error:', error)
+    const [error] = await to(signOut(auth))
+
+    if (error) {
+        alert('Houve um problema ao fazer logout')
+        return
     }
+
+    unsubscribe()
  }
 
-const handleAuthStateChanged = async user => {
-    try {
-        const result = await getRedirectResult(auth)
-        console.log('result:', result)
-    } catch (error) {
-        console.log('erro em getRedirectResult:', error)
-    }
+const handleRedirectResult = async () => {
+    const [error] = await to(getRedirectResult(auth))
 
+    if (error) {
+        alert('Houve um problema no redirecionamento')
+        return
+    }
+} 
+
+const renderLinks = ({ userExists }) => {
     const lis = [...document.querySelector('[data-js="nav-ul"]').children]
     
     lis.forEach(li => {
-        const liShouldBeVisible = li.dataset.js.includes(user ? 'logged-in' : 'logged-out')
+        const liShouldBeVisible = li.dataset.js.includes(userExists ? 'logged-in' : 'logged-out')
 
         if (liShouldBeVisible) {
             li.classList.remove('hide')
@@ -77,56 +95,50 @@ const handleAuthStateChanged = async user => {
 
         li.classList.add('hide')
     })
+}
 
+const removeLoginMessage = () => {
     const loginMessageExists = document.querySelector('[data-js="login-message"]')
     loginMessageExists?.remove()
+}
 
-    const formAddPhrase = document.querySelector('[data-js="add-phrase-form"]')
-    const phrasesList = document.querySelector('[data-js="phrases-list"]')
-    const buttonGoogle = document.querySelector('[data-js="button-google"]')
-    const linkLogout = document.querySelector('[data-js="logout"]')
-    const accountDetailsContainer = document.querySelector('[data-js="account-details"]')
-    const accountDetails = document.createElement('p')
+const handleAnonymousUser = () => {
+    const phrasesContainer = document.querySelector('[data-js="phrases-container"]')
+    const loginMessage = document.createElement('h5')
 
-    if (!user) {
-        const phrasesContainer = document.querySelector('[data-js="phrases-container"]')
-        const loginMessage = document.createElement('h5')
+    loginMessage.textContent = 'Faça login para ver as frases'
+    loginMessage.classList.add('center-align', 'white-text')
+    loginMessage.setAttribute('data-js', 'login-message')
+    phrasesContainer.append(loginMessage)
 
-        loginMessage.textContent = 'Faça login para ver as frases'
-        loginMessage.classList.add('center-align', 'white-text')
-        loginMessage.setAttribute('data-js', 'login-message')
-        phrasesContainer.append(loginMessage)
+    formAddPhrase.onsubmit = null
+    buttonGoogle.addEventListener('click', login)
+    linkLogout.onclick = null
+    phrasesList.innerHTML = ''
+    accountDetailsContainer.innerHTML = ''
+}
 
-        formAddPhrase.onsubmit = null
-        buttonGoogle.addEventListener('click', login)
-        linkLogout.onclick = null
-        phrasesList.innerHTML = ''
-        accountDetailsContainer.innerHTML = ''
+const createUserDocument = async user => {
+    const userDocRef = doc(db, 'users', user.uid)
+    const [error, docSnapshot] = await to(getDoc(userDocRef))
+
+    if (error) {
+        alert('Houve um problema ao tentar cadastrar o usuário')
         return
     }
 
-    try {   
-        const userDocRef = doc(db, 'users', user.uid)
-        const docSnapshot = await getDoc(userDocRef)
-
-        if (!docSnapshot.exists()) {
-            await setDoc(userDocRef, {
-                name: DOMPurify.sanitize(user.displayName),
-                email: DOMPurify.sanitize(user.email),
-                userId: DOMPurify.sanitize(user.uid)
-            })
-        }
-
-    } catch (error) {
-        console.log('Erro ao tentar registrar usuário:', error)
+    if (!docSnapshot.exists()) {
+        await setDoc(userDocRef, {
+            name: user.displayName,
+            email: user.email,
+            userId: user.uid
+        })
     }
+}
 
-    formAddPhrase.onsubmit = e => addPhrase(e, user)
-    buttonGoogle.removeEventListener('click', login)
-
+const renderPhrases = user => {
     const queryPhrases = query(collectionPhrases, where('userId', '==', user.uid))
-
-    const unsubscribe = onSnapshot(queryPhrases, snapshot => {
+    return onSnapshot(queryPhrases, snapshot => {
         const documentFragment = document.createDocumentFragment()
 
         snapshot.docChanges().forEach(docChange => {
@@ -146,10 +158,37 @@ const handleAuthStateChanged = async user => {
 
         phrasesList.append(documentFragment) 
     })
+}
+
+const handleSignedUser = async user => {
+    createUserDocument(user) 
+
+    formAddPhrase.onsubmit = e => addPhrase(e, user)
+    buttonGoogle.removeEventListener('click', login)
+
+    const unsubscribe = renderPhrases(user)
+    
     linkLogout.onclick = () => logout(unsubscribe)
     initCollapsibles(phrasesList)
-    accountDetails.textContent = DOMPurify.sanitize(`${user.displayName} | ${user.email}`)
+    accountDetails.textContent = `${user.displayName} | ${user.email}`
     accountDetailsContainer.append(accountDetails)
+}
+
+const handleAuthStateChanged = async user => {
+    handleRedirectResult()
+    renderLinks({ userExists: !!user })
+    removeLoginMessage()
+    
+    if (!user) {  
+       handleAnonymousUser() 
+       return
+    }
+
+   handleSignedUser({
+    displayName: DOMPurify.sanitize(user.displayName),
+    email: DOMPurify.sanitize(user.email),
+    uid: DOMPurify.sanitize(user.uid)
+   }) 
 }
 
 const initModals = () => {
