@@ -1,6 +1,6 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.6/firebase-app.js'
-import { getFirestore, collection, addDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/9.6.6/firebase-firestore.js'
-import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult,  onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/9.6.6/firebase-auth.js'
+import { getFirestore, collection, doc, getDoc, setDoc, query, where, addDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/9.6.6/firebase-firestore.js'
+import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/9.6.6/firebase-auth.js'
 
 const firebaseConfig = {
     apiKey: 'AIzaSyCr2-mujMv4U-qe4dzHteeChECdlRyDui0',
@@ -17,16 +17,15 @@ const auth = getAuth(app)
 const db = getFirestore(app)
 const collectionPhrases = collection(db, 'phrases')
  
-const addPhrase = async e => {
+const addPhrase = async (e, user) => {
     e.preventDefault()
 
     try {
-        const addedDoc = await addDoc(collectionPhrases, {
+        await addDoc(collectionPhrases, {
             movieTitle: DOMPurify.sanitize(e.target.title.value),
-            phrase: DOMPurify.sanitize(e.target.phrase.value)
+            phrase: DOMPurify.sanitize(e.target.phrase.value),
+            userId: DOMPurify.sanitize(user.uid)
         })
-
-        console.log('Document adicionado com o ID:', addedDoc.id)
 
         e.target.reset()
 
@@ -98,7 +97,7 @@ const handleAuthStateChanged = async user => {
         loginMessage.setAttribute('data-js', 'login-message')
         phrasesContainer.append(loginMessage)
 
-        formAddPhrase.removeEventListener('submit', addPhrase)
+        formAddPhrase.onsubmit = null
         buttonGoogle.addEventListener('click', login)
         linkLogout.onclick = null
         phrasesList.innerHTML = ''
@@ -106,9 +105,28 @@ const handleAuthStateChanged = async user => {
         return
     }
 
-    formAddPhrase.addEventListener('submit', addPhrase)
+    try {   
+        const userDocRef = doc(db, 'users', user.uid)
+        const docSnapshot = await getDoc(userDocRef)
+
+        if (!docSnapshot.exists()) {
+            await setDoc(userDocRef, {
+                name: DOMPurify.sanitize(user.displayName),
+                email: DOMPurify.sanitize(user.email),
+                userId: DOMPurify.sanitize(user.uid)
+            })
+        }
+
+    } catch (error) {
+        console.log('Erro ao tentar registrar usuário:', error)
+    }
+
+    formAddPhrase.onsubmit = e => addPhrase(e, user)
     buttonGoogle.removeEventListener('click', login)
-    const unsubscribe = onSnapshot(collectionPhrases, snapshot => {
+
+    const queryPhrases = query(collectionPhrases, where('userId', '==', user.uid))
+
+    const unsubscribe = onSnapshot(queryPhrases, snapshot => {
         const documentFragment = document.createDocumentFragment()
 
         snapshot.docChanges().forEach(docChange => {
